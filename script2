@@ -1,0 +1,72 @@
+#!/bin/bash
+for (( ip=101; ip<=114; ip++ )) do
+    ping -w1 -c1 10.40.14.$ip &> /dev/null
+    
+    if [ $? -eq 0 ] 
+    then
+        echo "10.40.14.$ip on"
+        ssh-copy-id 10.40.14.$ip
+        scp 10.40.14.$ip:/etc/passwd ~/p$ip
+    else
+        echo "10.40.14.$ip off"
+    fi
+    
+done
+
+rm users
+echo "Нарушители:"
+for (( ip=101; ip<=114; ip++ )) do
+    file="p$ip"
+    if [ -f $file  ]
+        then
+        echo "Сейчас сканируется $file"
+    while read -r p
+    do
+        count=`ls p1*|wc -l |cut -d\  -f1`
+        X=`echo $p |cut -d: -f2`
+        login=`echo $p |cut -d: -f1`
+        daemon=`echo $p |cut -d: -f3`
+        if [[ "$daemon" -gt 1000 && "$daemon" -lt 65000 ]]
+            then
+            echo $login >> users
+            if [ "$X" != "x" ] 
+                then
+                echo $login
+            fi
+            
+        fi
+    done <$file
+    fi
+done
+
+
+cat users |sort -u >users_sorted
+file2="users_sorted"
+((us_count=0))
+echo " "
+echo "Не зарегистрированные на всех компах: "
+while read -r u
+do
+    login2=`echo $u |cut -d: -f1`
+    ((ucount=0))
+    for (( ip=101; ip<=114; ip++ )) 
+    do
+        file="p$ip"
+        if [ -f $file  ]
+        then
+        cat $file|grep $login2 &>/dev/null 
+            if [ $? -eq 0 ]
+            then
+            ((ucount++))
+            fi
+        fi
+    done
+    if [ $ucount -lt $count ]
+    then
+    	((uscount++))
+        echo $login2
+    fi
+done <$file2
+echo "Количество не зарегистрированных: $uscount"
+    
+    
